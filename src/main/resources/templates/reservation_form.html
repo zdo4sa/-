@@ -1,0 +1,194 @@
+<!-- HTML5 ドキュメント宣言 -->
+<!DOCTYPE html>
+<!-- ルート要素。言語=日本語。Thymeleaf と Spring Security 拡張の名前空間を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタ情報とリソース読み込み -->
+<head>
+<!-- 文字エンコーディングを UTF-8 に指定（日本語の文字化け防止） -->
+<meta charset="UTF-8">
+<!-- ブラウザタブに表示されるページタイトル -->
+<title>予約登録 - 予約管理システム</title>
+<!-- 共通スタイルシートの読み込み（/css/style.css） -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+<!-- jQuery 本体の読み込み（Ajax で空き枠取得に利用） -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<!-- 画面本体 -->
+<body>
+<!-- レイアウト用コンテナ（横幅・余白など） -->
+<div class="container">
+<!-- 見出し：新規時は「予約登録」、編集時は「予約編集」を表示 -->
+<h1 th:text="${reservation.id == null ? '予約登録' : '予約編集'}"></h1>
+<!-- サーバサイドでの業務例外メッセージ表示領域（存在時のみ表示） -->
+<div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+<!-- 予約フォーム本体：新規 or 更新で action を出し分け。送信前に validateForm() を実行 -->
+<form th:action="${reservation.id == null} 
+                ? @{/reservation/new} 
+                : (${#authorization.expression('hasRole(''STAFF'')') or #authorization.expression('hasRole(''ADMIN'')')} 
+                    ? @{/staff/reservations/{id}/edit(id=${reservation.id})} 
+                    : @{/reservation/{id}/edit(id=${reservation.id})})" 
+      method="post" onsubmit="return validateForm()">
+	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+<!-- 入力ブロック：スタッフ選択 -->
+<p>
+<!-- スタッフ選択のラベル -->
+ <label for="staffId">スタッフ:</label>
+ <!-- スタッフ選択プルダウン（必須）。編集時は既存選択を反映 -->
+ <select id="staffId" name="staffId" required>
+  <!-- 未選択用のダミー項目 -->
+  <option value="">選択してください</option>
+  <!-- staffs をループして option を生成。編集/再描画時の選択状態も反映 -->
+  <option th:each="staff : ${staffs}" th:value= "${staff.id}" th:text= "${staff.name}" th:selected= "${(reservation.staff != null and reservation.staff.id == staff.id) or (param.staffId == staff.id)}"></option>
+ </select>
+ <!-- クライアントサイド検証のエラー表示領域 -->
+ <span class="error-message" id="staffIdError"></span>
+ </p>
+<!-- 入力ブロック：日付 -->
+<p>
+	<!-- 日付のラベル -->
+	<label for="date">日付:</label>
+	<!-- type=date。編集時 or サーバエラー戻りの際に再表示 -->
+	<input type="date" id="date" name="date" th:value="${reservation.recordDate != null ? reservation.recordDate :
+	param.date}" required>
+	<!-- クライアントサイド検証のエラー表示領域 -->
+	<span class="error-message" id="dateError"></span>
+	</p>
+	<!-- 入力ブロック：時間 -->
+	<p>
+	<!-- 時間のラベル -->
+	<label for="timeSlot">時間:</label>
+	<!-- 時間の選択肢（Ajax で空き枠を埋める）。必須 -->
+	<select id="timeSlot" name="timeSlot" required>
+	<!-- 初期表示メッセージ（スタッフと日付選択前） -->
+	<option value="">日付とスタッフを選択してください</option>
+	<!-- 編集時に既存の時間がある場合にだけ、選択状態で追加 -->
+	<option th:if= "${reservation.timeSlot != null}" th:value= "${reservation.timeSlot}" th:text= "${reservation.timeSlot}" selected></option>
+	</select>
+	<!-- クライアントサイド検証のエラー表示領域 -->
+	<span class="error-message" id="timeSlotError"></span>
+	</p>
+	<!-- 入力ブロック：メニュー -->
+	<p>
+	<!-- メニューのラベル -->
+	<label for="menu">メニュー:</label>
+	<!-- 自由入力のテキスト（必須）。編集/再描画時の値を維持 -->
+	<input type="text" id="menu" name="menu" th:value=
+	"${reservation.menu != null ? reservation.menu :
+	param.menu}" required>
+	<!-- クライアントサイド検証のエラー表示領域 -->
+	<span class="error-message" id="menuError"></span>
+	</p>
+	<!-- フォーム下部の操作ボタン群 -->
+	<div class="button-group">
+	<!-- 送信ボタン。新規/更新でラベルを切替 -->
+	<button type="submit" th:text= "${reservation.id == null ? '予約する' : '更新する'}"></button>
+	<!-- キャンセル（履歴画面へ遷移） -->
+	<a th:href="@{/reservation/history}" class="button secondary">キャンセル</a>
+	</div>
+	</form>
+	</div>
+	<!-- 画面内スクリプト（jQuery で空き枠取得・簡易バリデーション） -->
+	<script>
+	// DOM 構築完了イベントハンドラの登録
+	$(document).ready(function() {
+	// 空き枠プルダウンを更新する内部関数
+	function updateTimeSlots() {
+		// 選択中のスタッフ ID を取得
+		const staffId = $('#staffId').val();
+		// 選択中の日付を取得（yyyy-MM-dd）
+		const date = $('#date').val();
+		// 時間プルダウンの jQuery オブジェクト参照
+		const timeSlotSelect = $('#timeSlot');
+		// 編集時：現在選択されている時間値を保持（再選択のため）
+		const currentReservationTime = timeSlotSelect.val(); // Keep current value if editing
+		// 既存の option をクリア
+		timeSlotSelect.empty();
+		// 初期メッセージの option を追加
+		timeSlotSelect.append('<option value="">日付とスタッフを選択してください</option>');
+		// スタッフと日付の両方が入力済みであれば Ajax で空き枠を取得
+		if (staffId && date) {
+		// GET /reservation/available-slots へ staffId と date を送って JSON 配列を受け取る
+		$.get('/reservation/available-slots', { staffId: staffId, date: date }, function(data) {
+		// 空き枠が 1 件以上ある場合
+		if (data.length > 0) {
+		// 配列を走査して <option> を追加
+		$.each(data, function(index, slot) {
+		// value と表示テキストに同じ値（HH:mm）を設定
+		timeSlotSelect.append($('<option></option>').attr('value', slot).text(slot));
+		});
+		// 既存選択値が残っていて、かつ新しい候補に含まれるなら再選択
+		if (currentReservationTime && data.includes(currentReservationTime)) {
+		// 編集前と同じ時間に戻す
+		timeSlotSelect.val(currentReservationTime);
+		// 既存値が無い/失効している場合は先頭の候補を自動選択
+		} else if (data.length > 0) {
+		// 先頭要素を選択状態に
+		timeSlotSelect.val(data[0]);
+		}
+		// 空き枠が 0 件だった場合の表示
+		} else {
+		// 利用可能な枠がない旨のメッセージを option で表示
+		timeSlotSelect.append('<option value="">利用可能な時間枠がありません</option>');
+		}
+		// 通信失敗時（サーバエラー/ネットワークエラーなど）
+		}).fail(function() {
+		// 取得失敗のメッセージを表示
+		timeSlotSelect.append('<option value="">時間枠の取得に失敗しました</option>');
+		});
+		}
+		}
+		// 初期化：編集モードやサーバ側エラー戻り時に、既存の staffId/date があれば空き枠をロード
+		if ($('#staffId').val() && $('#date').val()) {
+			// 初回の空き枠更新
+			updateTimeSlots();
+			}
+			// スタッフ選択が変わったら空き枠を再取得
+			$('#staffId').change(updateTimeSlots);
+			// 日付が変わったら空き枠を再取得
+			$('#date').change(updateTimeSlots);
+			// フォーム送信前のクライアントサイド検証関数（true で送信続行）
+			function validateForm() {
+			// 全体の妥当性フラグを true で初期化
+			let isValid = true;
+			// 既存のエラーメッセージをクリア
+			$('.error-message').text(''); // Clear previous errors
+			// 入力値の現在値を取得
+			const staffId = $('#staffId').val();
+			const date = $('#date').val();
+			const timeSlot = $('#timeSlot').val();
+			const menu = $('#menu').val();
+			// スタッフ未選択のチェック
+			if (!staffId) {
+			// エラーメッセージを表示
+			$('#staffIdError').text('スタッフを選択してください。');
+			// 全体フラグを false に
+			isValid = false;
+			}
+			// 日付未入力のチェック
+			if (!date) {
+			// エラーメッセージを表示
+			$('#dateError').text('日付を選択してください。');
+			// 全体フラグを false に
+			isValid = false;
+			}
+			// 時間未選択のチェック
+			if (!timeSlot) {
+			// エラーメッセージを表示
+			$('#timeSlotError').text('時間を選択してください。');
+			// 全体フラグを false に
+			isValid = false;
+			}
+			// メニュー未入力（空白のみを含む）のチェック
+			if (!menu.trim()) {
+			// エラーメッセージを表示
+			$('#menuError').text('メニューを入力してください。');
+			// 全体フラグを false に
+			isValid = false;
+			}
+			// すべてのチェックを通過したら true を返して送信
+			return isValid;
+			}
+			});
+			</script>
+			</body>
+			</html>

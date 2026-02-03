@@ -1,0 +1,62 @@
+<!-- HTML5 宣言 -->
+<!DOCTYPE html>
+<!-- ルート要素。日本語、Thymeleaf 名前空間を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<!-- メタ情報・スタイルの読み込み -->
+<head>
+<!-- 文字コード指定 -->
+<meta charset="UTF-8">
+<!-- ページタイトル -->
+<title>ログイン - 予約管理システム</title>
+<!-- 共通スタイルシート -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- 本文 -->
+<body>
+<!-- レイアウト用コンテナ -->
+<div class="container">
+<!-- アプリ名の見出し -->
+<h1>予約管理システム</h1>
+<!-- セクション見出し -->
+<h2>ログイン</h2>
+<!-- ログインフォーム（SecurityConfig.formLogin と連動） -->
+<form th:action="@{/login}" method="post">
+<!-- エラー時のメッセージ（?error クエリが付いた時に表示） -->
+<div th:if=
+"${param.error}" class="error-message">
+メールアドレスまたはパスワードが不正です。
+</div>
+<!-- ログアウト直後のメッセージ（?logout クエリで表示） -->
+<div th:if=
+"${param.logout}" class="success-message">
+ログアウトしました。
+</div>
+<!-- ユーザ名（=メールアドレス）入力 -->
+<p>
+<!-- ラベル -->
+<label for="username">メールアドレス:</label>
+<!-- 入力欄（username という name は Spring Security のデフォルトに一致） -->
+<input type="text" id="username" name="username" required>
+</p>
+<!-- パスワード入力 -->
+<p>
+<!-- ラベル -->
+<label for="password">パスワード:</label>
+<!-- 入力欄（password という name もデフォルトに一致） -->
+<input type="password" id="password" name="password" required>
+</p>
+<!-- 送信ボタン -->
+<div class="button-group">
+	<button type="submit">ログイン</button>
+	<!-- 注意：CSRF 有効時は hidden 自動挿入（thymeleaf-spring5 連携時）は無いので、
+	実運用では以下を入れる：
+	<input type="hidden" th:name=
+	"${_csrf.parameterName}" th:value=
+	"${_
+	csrf.token}">
+	-->
+	</div>
+	</form>
+	</div>
+	</body>
+	</html>

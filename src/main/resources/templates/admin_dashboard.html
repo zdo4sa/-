@@ -1,0 +1,100 @@
+<!-- HTML5 ドキュメント宣言：ブラウザに HTML5 であることを伝える -->
+<!DOCTYPE html>
+<!-- ルート要素。言語は日本語、Thymeleaf と Spring Security 拡張の XMLNS を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタデータを格納する head セクション -->
+<head>
+<!-- 文字エンコーディングを UTF-8 に設定（日本語表示の乱れ防止） -->
+<meta charset="UTF-8">
+<!-- ブラウザタブに表示されるページタイトル -->
+<title>管理者ダッシュボード - 予約管理システム</title>
+<!-- 外部スタイルシートを読み込む。Thymeleaf の URL 表現で /css/style.css を解決 -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- 画面本体 -->
+<body>
+<!-- レイアウトの中央寄せや余白を与えるコンテナ -->
+<div class="container">
+<!-- ページ見出し -->
+<h1>管理者ダッシュボード</h1>
+<!-- ログイン中ユーザ名を表示。sec:authentication="name" は Spring Security から取得 -->
+<p>ようこそ、<span sec:authentication="name"></span>さん！ (管理者)</p>
+<!-- 主要ナビゲーション領域（ボタンリンク群） -->
+<div class="main-nav">
+<!-- 全予約管理画面へのリンク -->
+<a th:href="@{/admin/reservations}" class="button">全予約管理</a>
+<!-- 全シフト管理画面へのリンク -->
+<!--私が変更しました-->
+<a th:href="@{/admin/shifts}" class="button">全シフト管理</a>
+<!-- 統計画面へのリンク -->
+<a th:href="@{/admin/statistics}" class="button">統計データ</a>
+<!-- 【追加】アンケート一覧へのリンク -->
+<a th:href="@{/admin/surveys}" class="button info">アンケート一覧</a>
+<!-- ログアウトフォーム。POST 送信前提（CSRF トークン必須：hidden を入れるのが実運用では安全） -->
+<form th:action="@{/logout}" method="post" style="display:inline;">
+<!-- 送信ボタン（セカンダリ配色） -->
+<button type="submit" class="button secondary">ログアウト</button>
+<!-- 注意：Spring Security デフォルトは CSRF 有効。
+本番では以下の hidden を入れること：
+<input type="hidden" th:name=
+"${_csrf.parameterName}" th:value=
+"${_
+csrf.token}">
+-->
+</form>
+</div>
+<!-- 最近の予約一覧セクション -->
+<h2>最近の予約</h2>
+<!-- 表形式で予約を表示 -->
+<table>
+<!-- テーブルヘッダ（列名） -->
+<thead>
+<tr>
+<!-- 顧客名の列 -->
+<th>顧客名</th>
+<!-- 担当スタッフの列（未割り当て表示の可能性あり） -->
+<th>スタッフ</th>
+<!-- 予約日（yyyy-MM-dd で整形） -->
+<th>日付</th>
+<!-- 予約時間（HH:mm で整形） -->
+<th>時間</th>
+<!-- メニュー名 -->
+<th>メニュー</th>
+<!-- ステータス（予約済/キャンセル済） -->
+<th>ステータス</th>
+</tr>
+</thead>
+<!-- テーブル本体 -->
+<tbody>
+<!-- recentReservations をループして 1 予約 = 1 行で表示 -->
+<tr th:each="reservation : ${recentReservations}">
+<!-- 予約の顧客名を表示 -->
+<td th:text=
+"${reservation.user.name}"></td>
+<!-- スタッフが null の場合は '未割り当て' と表示 -->
+<td th:text=
+"${reservation.staff != null ? reservation.staff.name : '未割り当て'}"></td>
+<!-- 予約日を yyyy-MM-dd 形式で表示（#temporals は Thymeleaf の日時ユーティリティ） -->
+<td th:text=
+"${#temporals.format(reservation.recordDate, 'yyyy-MM-dd')}"></td>
+<!-- 時刻を HH:mm 形式で表示 -->
+<td th:text=
+"${#temporals.format(reservation.timeSlot, 'HH:mm')}"></td>
+<!-- メニュー名を表示 -->
+<td th:text=
+"${reservation.menu}"></td>
+<!-- ステータスを表示 -->
+<td th:text=
+"${reservation.status}"></td>
+</tr>
+<!-- 一件もない場合の代替行（colspan=6 で列をまたいでメッセージ表示） -->
+<tr th:if=
+"${#lists.isEmpty(recentReservations)}">
+<td colspan=
+"6">最近の予約はありません。</td>
+</tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>

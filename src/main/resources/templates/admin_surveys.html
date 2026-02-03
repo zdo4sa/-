@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>アンケート結果一覧 - 予約管理システム</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="container">
+    <h1>アンケート結果一覧</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>予約日</th>
+                <th>スタッフ</th>
+                <th>スタッフ評価</th>
+                <th>サービス評価</th>
+                <th>お客様コメント</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="res : ${responses}">
+                <td th:text="${#temporals.format(res.reservation.recordDate, 'yyyy-MM-dd')}"></td>
+                <td th:text="${res.reservation.staff.name}"></td>
+                <td th:text="${res.staffRating} + ' / 5'"></td>
+                <td th:text="${res.serviceRating} + ' / 5'"></td>
+                <td th:text="${res.comment}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(responses)}">
+                <td colspan="5">まだアンケート回答はありません。</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="button-group">
+        <a th:href="@{/dashboard}" class="button secondary">ダッシュボードへ戻る</a>
+    </div>
+</div>
+</body>
+</html>

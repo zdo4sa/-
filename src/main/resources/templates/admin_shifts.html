@@ -1,0 +1,168 @@
+<!-- HTML5 宣言：ブラウザに HTML5 ドキュメントであることを告げる -->
+<!DOCTYPE html>
+<!-- ルート要素。日本語文書。Thymeleaf と Spring Security 拡張の名前空間を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタ情報と外部リソースの読み込みを行うセクション -->
+<head>
+<!-- 文字符号化方式を UTF-8 に設定（日本語の文字化け防止） -->
+<meta charset="UTF-8">
+<!-- ブラウザのタブに表示されるページタイトル -->
+<title>全シフト管理 - 予約管理システム</title>
+<!-- 外部スタイルシートを読み込む（Thymeleaf の URL 解決で /css/style.css を参照） -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- 画面本体 -->
+<body>
+<!-- レイアウト用の共通コンテナ。中央寄せや余白の付与を担当 -->
+<div class="container">
+<!-- ページ見出し -->
+<h1>全シフト管理</h1>
+<!-- ページの説明文 -->
+<p>全てのスタッフのシフトを表示・管理します。</p>
+<!-- 操作成功時のフラッシュメッセージ。?success=
+... が付いている場合に表示 -->
+<div th:if=
+"${param.success}" class="success-message">
+<!-- シフト更新成功メッセージ（?success=shiftUpdated のとき） -->
+<span th:if=
+"${param.success ==
+'shiftUpdated'}">シフトが更新されました。</span>
+<!-- シフト削除成功メッセージ（?success=shiftDeleted のとき） -->
+<span th:if=
+"${param.success == 'shiftDeleted'}">シフトが削除されました。</span>
+</div>
+<!-- シフト登録/更新フォームの見出し -->
+<h2>シフト登録/更新</h2>
+<!-- 管理者が任意のスタッフに対してシフトを新規作成・更新するフォーム（POST） -->
+<form th:action="@{/admin/shifts/create-update}" method="post">
+<!-- 実運用では CSRF トークン hidden を入れる：
+<input type="hidden" th:name=
+"${_csrf.parameterName}" th:value=
+"${_csrf.token}">-->
+<p>
+<!-- 項目ブロック：スタッフ選択 -->
+<!-- スタッフ選択ラベル（for は select の id と連動） -->
+<label for="staffId">スタッフ:</label>
+<!-- スタッフ選択プルダウン。必須入力 -->
+<select id="staffId" name="staffId" required>
+<!--<select id="staffId" name="staffId" required>-->
+<!-- 未選択用のダミーオプション -->
+<option value="">選択してください</option>
+<!-- staffs（STAFF ロール一覧）をループし、id と表示名をオプション化 -->
+<option th:each="staff : ${staffs}" th:value= "${staff.id}" th:text="${staff.name}"></option>
+</select>
+</p>
+<!-- 項目ブロック：日付 -->
+<p>
+<!-- 日付入力のラベル -->
+<label for="date">日付:</label>
+<!-- type=date でシフト日を入力。必須 -->
+<input type="date" id="date" name="date" required>
+</p>
+<!-- 項目ブロック：開始時間 -->
+<p>
+<!-- 開始時間のラベル -->
+<label for="startTime">開始時間:</label>
+<!-- type=time で開始時刻を入力。必須 -->
+<input type="time" id="startTime" name="startTime" required>
+</p>
+<!-- 項目ブロック：終了時間 -->
+<p>
+<!-- 終了時間のラベル -->
+<label for="endTime">終了時間:</label>
+<!-- type=time で終了時刻を入力。必須 -->
+<input type="time" id="endTime" name="endTime" required>
+</p>
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    const start = document.getElementById('startTime').value;
+    const end = document.getElementById('endTime').value;
+    
+    if (start >= end) {
+        alert('終了時間は開始時間より後にしてください！');
+        e.preventDefault(); // 送信をキャンセル
+    }
+});
+</script>
+<!-- 送信ボタンのコンテナ -->
+<div class="button-group">
+<!-- シフト登録/更新を実行する送信ボタン -->
+<button type="submit">シフト登録/更新</button>
+</div>
+</form>
+<!-- 一覧セクションの見出し -->
+<h2>全シフト一覧</h2>
+<!-- 期間フィルタフォーム（GET）：開始日・終了日で絞り込み -->
+<form th:action="@{/admin/shifts}" method="get" class="filter-form">
+<!-- フィルタ：開始日入力 -->
+<div>
+<!-- ラベル（開始日） -->
+<label for="filterStartDate">開始日:</label>
+<!-- パラメータ startDate を yyyy-MM-dd で再表示して入力補助 -->
+<input type="date" id="filterStartDate" name="startDate"
+th:value="${param.startDate}">
+</div>
+<!-- フィルタ：終了日入力 -->
+<div>
+<!-- ラベル（終了日） -->
+<label for="filterEndDate">終了日:</label>
+<!-- パラメータ endDate を yyyy-MM-dd で再表示して入力補助 -->
+<input type="date" id="filterEndDate" name="endDate" th:value="${param.endDate}">
+</div>
+<!-- フィルタ実行ボタン -->
+<button type="submit" class="button">フィルタ</button>
+</form>
+<!-- シフト一覧テーブル -->
+<table>
+<!-- ヘッダ行 -->
+<thead>
+<tr>
+<!-- スタッフ名の列 -->
+<th>スタッフ</th>
+<!-- シフト日（record
+_
+date）の列 -->
+<th>日付</th>
+<!-- 開始時刻の列 -->
+<th>開始時間</th>
+<!-- 終了時刻の列 -->
+<th>終了時間</th>
+<!-- 操作列（削除ボタンなど） -->
+<th>操作</th>
+</tr>
+</thead>
+<!-- テーブル本体 -->
+<tbody>
+<!-- allShifts をループし、1 レコード = 1 行で表示 -->
+<tr th:each="shift : ${allShifts}">
+<!-- スタッフの表示名 -->
+<td th:text= "${shift.staff?.name}"></td>
+<!-- シフト日（Thymeleaf でのフォーマット指定がなければ ISO 表示） -->
+<td th:text="${#temporals.format(shift.recordDate, 'yyyy-MM-dd')}"></td>
+<!-- 開始時刻 -->
+<td th:text="${#temporals.format(shift.startTime, 'HH:mm')}"></td>
+<td th:text="${#temporals.format(shift.endTime, 'HH:mm')}"></td>
+<td>
+<!-- 削除実行フォーム（POST）。インライン表示。CSRF トークン hidden 推奨 -->
+<form th:action="@{/admin/shifts/{id}/delete(id=${shift.id})}" method="post" style="display:inline;">
+	<input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+<!-- 削除ボタン。確認ダイアログで誤操作を防止 -->
+<button type="submit" class="button danger" onclick="return confirm('本当にこのシフトを削除しますか？');">削除</button>
+</form>
+</td>
+<!-- レコードが 0 件のときの代替表示行 -->
+<tr th:if= "${#lists.isEmpty(allShifts)}">
+<!-- 5 列分をまとめて「シフトがありません。」メッセージを表示 -->
+<td colspan= "5">シフトがありません。</td>
+</tr>
+</tbody>
+</table>
+<!-- 下部ナビゲーションのボタン群 -->
+<div class="button-group">
+<!-- ダッシュボードへ戻るリンク -->
+<a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+</div>
+</div>
+</body>
+</html>

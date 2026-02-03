@@ -1,0 +1,111 @@
+<!-- HTML5 ドキュメント宣言：ブラウザに HTML5 として解釈させる -->
+<!DOCTYPE html>
+<!-- ルート要素。言語=日本語、Thymeleaf と Spring Security 拡張の名前空間を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタ情報とリソース読込を行うセクション -->
+<head>
+<!-- 文字エンコーディングを UTF-8 に設定（日本語の文字化け防止） -->
+<meta charset="UTF-8">
+<!-- ブラウザタブに表示されるページタイトル -->
+<title>全予約管理 - 予約管理システム</title>
+<!-- 外部 CSS を Thymeleaf の URL 解決で読み込む -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- ページ本体 -->
+<body>
+<!-- コンテンツの横幅制御や余白を担うコンテナ -->
+<div class="container">
+<!-- ページ見出し -->
+<h1>全予約管理</h1>
+<!-- ページ説明文 -->
+<p>システム内の全ての予約を表示します。</p>
+<!-- 期間フィルタフォーム（GET：URL クエリとして送信） -->
+<form th:action="@{/admin/reservations}" method="get" class="filter-form">
+<!-- 開始日入力フィールド（param.startDate を yyyy-MM-dd で再表示） -->
+<div>
+<!-- 開始日のラベル。for 属性は入力要素の id と一致させる -->
+<label for="startDate">開始日:</label>
+<!-- type=date の日付入力。Thymeleaf で初期値をフォーマットしてセット -->
+<input type="date" id="startDate" name="startDate" th:value="${param.startDate}">
+</div>
+<div>
+<!-- 終了日入力フィールド（param.endDate を yyyy-MM-dd で再表示） -->
+<!-- 終了日のラベル -->
+<label for="endDate">終了日:</label>
+<!-- 日付入力。Thymeleaf で初期値をフォーマットしてセット -->
+<input type="date" id="endDate" name="endDate" th:value="${param.endDate}">
+</div>
+<!-- フィルタ実行ボタン -->
+<button type="submit" class="button">フィルタ</button>
+</form>
+<!-- 予約一覧テーブル -->
+<table>
+	<!-- テーブルヘッダ -->
+	<thead>
+	<tr>
+	<!-- 予約 ID 列 -->
+	<th>ID</th>
+	<!-- 顧客名列 -->
+	<th>顧客名</th>
+	<!-- スタッフ名列（未割り当ての可能性あり） -->
+	<th>スタッフ</th>
+	<!-- 日付列（yyyy-MM-dd 表示想定） -->
+	<th>日付</th>
+	<!-- 時間列（HH:mm 表示想定） -->
+	<th>時間</th>
+	<!-- メニュー列 -->
+	<th>メニュー</th>
+	<!-- ステータス列（予約済/キャンセル済） -->
+	<th>ステータス</th>
+	<!-- 操作列（編集/キャンセルのアクション） -->
+	<th>操作</th>
+	</tr>
+	</thead>
+	<!-- テーブル本体 -->
+	<!-- テーブル本体 -->
+		<tbody>
+			<!-- allReservations をループして 1 行ずつ出力 -->
+			<tr th:each="reservation : ${allReservations}">
+				<td th:text="${reservation.id}"></td>
+				<td th:text="${reservation.user.name}"></td>
+				<td th:text="${reservation.staff != null ? reservation.staff.name : '未割り当て'}"></td>
+				<td th:text="${#temporals.format(reservation.recordDate, 'yyyy-MM-dd')}"></td>
+				<td th:text="${#temporals.format(reservation.timeSlot, 'HH:mm')}"></td>
+				<td th:text="${reservation.menu}"></td>
+				<td th:text="${reservation.status}"></td>
+				
+				<!-- 操作列：条件分岐でボタンを出し分け -->
+				<td>
+					<!-- 1. 編集ボタン（共通） -->
+					<a th:href="@{/reservation/{id}/edit(id=${reservation.id})}" class="button secondary">編集</a>
+
+					<!-- 2. 【未来・当日】キャンセルボタンを表示 -->
+					<form th:if="${!reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
+						  th:action="@{admin/reservation/{id}/cancel(id=${reservation.id})}" method="post" style="display:inline;">
+						<button type="submit" class="button danger" onclick="return confirm('予約を取り消しますか？');">キャンセル</button>
+					</form>
+
+					<!-- 3. 【昨日以前（過去）】削除ボタンを表示 -->
+					<form th:if="${reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
+						  th:action="@{/admin/reservations/{id}/delete(id=${reservation.id})}" method="post" style="display:inline;">
+						<button type="submit" class="button secondary" onclick="return confirm('過去の記録を完全に削除しますか？');">削除</button>
+					</form>
+				</td>
+			</tr>
+			
+			<!-- 予約が 0 件のときの表示 -->
+			<tr th:if="${#lists.isEmpty(allReservations)}">
+				<td colspan="8" style="text-align:center;">予約がありません。</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<!-- 下部ボタン群 -->
+	<div class="button-group" style="margin-top: 20px;">
+		<!-- 管理者は /admin/dashboard へ戻るのが一般的 -->
+		<a th:href="@{/admin/dashboard}" class="button secondary">管理画面に戻る</a>
+	</div>
+	</div>
+	</body>
+	</html>
+	

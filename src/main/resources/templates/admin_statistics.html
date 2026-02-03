@@ -1,0 +1,122 @@
+<!-- HTML5 宣言：HTML5 ドキュメントであることを通知 -->
+<!DOCTYPE html>
+<!-- ルート要素。日本語、Thymeleaf の名前空間を宣言（sec は不要な画面だがあっても問題なし） -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタ情報・外部リソースの読み込み -->
+<head>
+<!-- 文字エンコーディングの指定（日本語の文字化け防止） -->
+<meta charset="UTF-8">
+<!-- ブラウザタブに表示されるタイトル -->
+<title>統計データ - 予約管理システム</title>
+<!-- 画面のスタイルを読み込む（/css/style.css を解決） -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- 画面本体 -->
+<body>
+<!-- レイアウト用コンテナ（横幅・余白調整） -->
+<div class="container">
+<!-- ページ見出し -->
+<h1>統計データ</h1>
+<!-- ページ説明文 -->
+<p>予約に関する統計データを表示します。</p>
+<!-- 期間フィルタフォーム（GET：URL パラメータで期間を指定） -->
+<form th:action="@{/admin/statistics}" method="get" class="filter-form">
+<!-- 開始日の入力ブロック -->
+<div>
+<!-- ラベル（開始日） -->
+<label for="startDate">開始日:</label>
+<!-- startDate を yyyy-MM-dd で再表示（サーバ側で model に設定済） -->
+<input type="date" id="startDate" name="startDate" th:value=
+"${#temporals.format(startDate, '
+yyyy-MM-
+dd')}">
+</div>
+<!-- 終了日の入力ブロック -->
+<div>
+<!-- ラベル（終了日） -->
+<label for="endDate">終了日:</label>
+<!-- endDate を yyyy-MM-dd で再表示 -->
+<input type="date" id="endDate" name="endDate" th:value=
+"${#temporals.format(endDate, '
+yyyy-MM-
+dd')}">
+</div>
+<!-- フィルタ実行ボタン -->
+<button type="submit" class="button">フィルタ</button>
+</form>
+<!-- CSV エクスポートリンク（GET：サーバ側で Content-Disposition を設定してダウンロード） -->
+<a th:href="@{/admin/statistics/csv(startDate=${startDate}, endDate=${endDate})}" class="button">CSV エクスポ
+ート</a>
+<!-- メニュー別予約数のセクション見出し -->
+<h2>メニュー別予約数</h2>
+<!-- 集計結果を表示するテーブル -->
+<table>
+<!-- テーブルヘッダ（項目名） -->
+<thead>
+<tr>
+<!-- メニュー名列 -->
+<th>メニュー</th>
+<!-- 件数列 -->
+<th>予約数</th>
+</tr>
+</thead>
+<!-- テーブル本体 -->
+<tbody>
+<!-- reservationCountByMenu（Map）をループ。entry.key=メニュー、entry.value=件数 -->
+<tr th:each="entry : ${reservationCountByMenu}">
+<!-- メニュー名の表示 -->
+<td th:text=
+"${entry.key}"></td>
+<!-- 予約件数の表示 -->
+<td th:text=
+"${entry.value}"></td>
+</tr>
+<!-- データが空のときの代替表示 -->
+<tr th:if=
+"${#maps.isEmpty(reservationCountByMenu)}">
+<!-- 2 列分まとめて「データがありません。」を出す -->
+<td colspan=
+"2">データがありません。</td>
+</tr>
+</tbody>
+</table>
+<!-- スタッフ別予約数のセクション見出し -->
+<h2>スタッフ別予約数</h2>
+<!-- スタッフ別集計のテーブル -->
+<table>
+<!-- ヘッダ -->
+<thead>
+<tr>
+<!-- スタッフ名列 -->
+<th>スタッフ</th>
+<!-- 件数列 -->
+<th>予約数</th>
+</tr>
+</thead>
+<!-- 本体 -->
+<tbody>
+<!-- reservationCountByStaff（Map<String,Long>）をループ -->
+<tr th:each="entry : ${reservationCountByStaff}">
+<!-- スタッフ名 -->
+<td th:text= "${entry.key}"></td>
+<!-- 予約件数 -->
+<td th:text=
+"${entry.value}"></td>
+</tr>
+<!-- 空データ時の代替表示 -->
+<tr th:if=
+"${#maps.isEmpty(reservationCountByStaff)}">
+<!-- 2 列まとめてメッセージ -->
+<td colspan=
+"2">データがありません。</td>
+</tr>
+</tbody>
+</table>
+<!-- 下部ナビゲーション：ダッシュボードへ戻る -->
+<div class="button-group">
+<!-- ダッシュボードへ戻るリンク -->
+<a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+</div>
+</div>
+</body>
+</html>

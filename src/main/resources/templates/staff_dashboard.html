@@ -1,0 +1,81 @@
+<!-- HTML5 宣言 -->
+<!DOCTYPE html>
+<!-- ルート要素。日本語、Thymeleaf と Spring Security 名前空間を宣言 -->
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<!-- メタ情報・スタイル -->
+<head>
+<!-- 文字コード -->
+<meta charset="UTF-8">
+<!-- ページタイトル -->
+<title>スタッフダッシュボード - 予約管理システム</title>
+<!-- 共通スタイル -->
+<link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<!-- 本文 -->
+<body>
+<!-- レイアウト用コンテナ -->
+<div class="container">
+<!-- 見出し -->
+<h1>スタッフダッシュボード</h1>
+<!-- ログイン中ユーザ名の表示（Security principal） -->
+<p>ようこそ、<span sec:authentication="name"></span>さん！ (スタッフ)</p>
+<!-- メインナビ（予約管理、シフト管理、ログアウト） -->
+<div class="main-nav">
+<!-- 自分の予約一覧へ -->
+<a th:href="@{/staff/reservations}" class="button">予約管理</a>
+<!-- 自分のシフト管理へ -->
+<a th:href="@{/staff/shifts}" class="button">シフト管理</a>
+<!-- ログアウトフォーム（POST） -->
+<form th:action="@{/logout}" method="post" style="display:inline;">
+<!-- 送信ボタン -->
+<button type="submit" class="button secondary">ログアウト</button>
+<!-- 実運用では CSRF hidden を追加：
+<input type="hidden" th:name=
+"${_csrf.parameterName}" th:value=
+"${_
+csrf.token}">
+-->
+</form>
+</div>
+<!-- 本日の予約一覧セクション -->
+<h2>本日の予約</h2>
+<!-- テーブルで表示 -->
+<table>
+<!-- ヘッダ -->
+<thead>
+<tr>
+<!-- 顧客名 -->
+<th>顧客名</th>
+<!-- 予約時間（HH:mm） -->
+<th>時間</th>
+<!-- メニュー名 -->
+<th>メニュー</th>
+<!-- ステータス -->
+<th>ステータス</th>
+</tr>
+</thead>
+<!-- 本体 -->
+<tbody>
+<!-- todayReservations をループ表示 -->
+<tr th:each="reservation : ${todayReservations}">
+<!-- 顧客名 -->
+<td th:text=
+"${reservation.user.name}"></td>
+<!-- 時間（HH:mm で整形） -->
+<td th:text=
+"${#temporals.format(reservation.timeSlot, 'HH:mm')}"></td>
+<!-- メニュー -->
+<td th:text= "${reservation.menu}"></td>
+<!-- ステータス -->
+<td th:text= "${reservation.status}"></td>
+</tr>
+<!-- データが無い場合の代替行 -->
+<tr th:if= "${#lists.isEmpty(todayReservations)}">
+<!-- 4 列分まとめて表示 -->
+<td colspan="4">本日の予約はありません。</td>
+</tr>
+</tbody>
+</table>
+</div>
+</body>
+</html>

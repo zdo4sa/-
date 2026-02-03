@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>アンケート回答 - 予約管理システム</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .rating-group { margin-bottom: 20px; }
+        .rating-group label { margin-right: 10px; }
+        textarea { width: 100%; height: 100px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>アンケート回答</h1>
+    <p>ご来店ありがとうございました。サービス向上のため、アンケートにご協力ください。</p>
+    
+    <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
+
+    <form th:action="@{/reservation/{id}/survey(id=${reservation.id})}" method="post">
+        <!-- 1. スタッフの対応評価 -->
+        <div class="rating-group">
+            <p><strong>1. スタッフ（[[${reservation.staff.name}]]）の対応はいかがでしたか？</strong></p>
+            <span th:each="i : ${#numbers.sequence(5, 1)}">
+                <input type="radio" th:id="'staff' + ${i}" name="staffRating" th:value="${i}" required>
+                <label th:for="'staff' + ${i}" th:text="${i} + ' : ' + 
+                    (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></label>
+            </span>
+        </div>
+
+        <!-- 2. 設備やサービスの満足度 -->
+        <div class="rating-group">
+            <p><strong>2. 設備やサービスの満足度はいかがでしたか？</strong></p>
+            <span th:each="i : ${#numbers.sequence(5, 1)}">
+                <input type="radio" th:id="'service' + ${i}" name="serviceRating" th:value="${i}" required>
+                <label th:for="'service' + ${i}" th:text="${i} + ' : ' + 
+                    (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></label>
+            </span>
+        </div>
+
+        <!-- 3. 自由記述 -->
+        <div class="rating-group">
+            <p><strong>3. ご意見・ご感想がございましたらご記入ください（任意）</strong></p>
+            <textarea name="comment" placeholder="サービスへのご要望などお気軽にご記入ください"></textarea>
+        </div>
+
+        <div class="button-group">
+            <button type="submit" class="button">回答を送信する</button>
+            <a th:href="@{/reservation/history}" class="button secondary">戻る</a>
+        </div>
+    </form>
+</div>
+</body>
+</html>
