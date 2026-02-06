@@ -65,6 +65,15 @@ public class Reservation {
 	@lombok.ToString.Exclude // 循環参照によるエラーを防ぐために必須
 
 	private SurveyResponse surveyResponse;
+	private int appliedDiscount = 0; // 割引額（デフォルト 0）
+
+	public int getAppliedDiscount() {
+		return appliedDiscount;
+	}
+
+	public void setAppliedDiscount(int appliedDiscount) {
+		this.appliedDiscount = appliedDiscount;
+	}
 
 	public SurveyResponse getSurveyResponse() {
 		return this.surveyResponse;

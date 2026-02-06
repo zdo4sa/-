@@ -78,12 +78,23 @@
 	<!-- クライアントサイド検証のエラー表示領域 -->
 	<span class="error-message" id="menuError"></span>
 	</p>
+	<div class="form-group">
+	    <label for="couponId">🎟️ クーポンを利用する（任意）</label>
+	    <select name="couponId" id="couponId" class="form-control">
+	        <option value="">クーポンを使用しない</option>
+	        <!-- Controller から渡されたクーポンをループ -->
+	        <option th:each="coupon : ${availableCoupons}" 
+	                th:value="${coupon.id}" 
+	                th:text="${coupon.name + ' (' + coupon.discountAmount + '円引き)'}">
+	        </option>
+	    </select>
+	</div>
 	<!-- フォーム下部の操作ボタン群 -->
 	<div class="button-group">
 	<!-- 送信ボタン。新規/更新でラベルを切替 -->
 	<button type="submit" th:text= "${reservation.id == null ? '予約する' : '更新する'}"></button>
 	<!-- キャンセル（履歴画面へ遷移） -->
-	<a th:href="@{/reservation/history}" class="button secondary">キャンセル</a>
+	<a th:href="@{/dashboard}" class="button secondary">内容を破棄して戻る</a>
 	</div>
 	</form>
 	</div>

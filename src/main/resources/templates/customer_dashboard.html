@@ -26,6 +26,20 @@
 <!-- 自身の予約履歴へ -->
 <a th:href="@{/reservation/history}" class="button">予約履歴</a>
 <!-- ログアウトフォーム（POST）。CSRF トークン hidden を入れるのが安全 -->
+<!-- クーポン一覧へのリンクボタン -->
+<div style="margin-bottom: 20px;">
+    <a th:href="@{/coupons}" class="btn-coupon" style="
+        display: inline-block;
+        padding: 10px 20px;
+        background-color: #ff9800;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-weight: bold;
+    ">
+        🎟️ マイクーポンを確認する
+    </a>
+</div>
 <form th:action="@{/logout}" method="post" style="display:inline;">
 <!-- 送信ボタン -->
 <button type="submit" class="button secondary">ログアウト</button>

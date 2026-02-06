@@ -1,11 +1,25 @@
-INSERT INTO users (name, email, password, role) VALUES
-('顧客 A','customerA@example.com','password','CUSTOMER'),
-('スタッフ B','staffB@example.com','password','STAFF'),
-('管理者 C','adminC@example.com','password','ADMIN'),
-('顧客 D','customeDr@example.com','password','CUSTOMER'),
-('スタッフ E','staffE@example.com','password','STAFF');
+-- 顧客 A (パスワード: password) 
+-- ※このハッシュ値は標準的な計算結果です
+INSERT INTO users (name, email, password, role) 
+VALUES ('顧客 A', 'customerA@example.com', '$2a$10$09kEZUelJqzj5z3lrxWgZOdJLjkTMolYZOznX/WMOVwQ5tzjaOnb6', 'ROLE_CUSTOMER');
 
--- 2. シフト登録
+-- スタッフ B
+INSERT INTO users (name, email, password, role) 
+VALUES ('スタッフ B', 'staffB@example.com', '$2a$10$09kEZUelJqzj5z3lrxWgZOdJLjkTMolYZOznX/WMOVwQ5tzjaOnb6', 'ROLE_STAFF');
+
+-- 管理者 C
+INSERT INTO users (name, email, password, role) 
+VALUES ('管理者 C', 'adminC@example.com', '$2a$10$09kEZUelJqzj5z3lrxWgZOdJLjkTMolYZOznX/WMOVwQ5tzjaOnb6', 'ROLE_ADMIN');
+
+-- 顧客 D
+INSERT INTO users (name, email, password, role) 
+VALUES ('顧客 D', 'customeDr@example.com', '$2a$10$09kEZUelJqzj5z3lrxWgZOdJLjkTMolYZOznX/WMOVwQ5tzjaOnb6', 'ROLE_CUSTOMER');
+
+-- スタッフ E
+INSERT INTO users (name, email, password, role) 
+VALUES ('スタッフ E', 'staffE@example.com', '$2a$10$09kEZUelJqzj5z3lrxWgZOdJLjkTMolYZOznX/WMOVwQ5tzjaOnb6', 'ROLE_STAFF');
+
+-- 2. シフト登録（staff_id取得用。emailは上記と一致させること）
 INSERT INTO shift (staff_id, record_date, start_time, end_time) VALUES
 ((SELECT id FROM users WHERE email ='staffB@example.com'), CURRENT_DATE, '09:00:00', '17:00:00');
 

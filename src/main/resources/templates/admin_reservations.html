@@ -63,6 +63,7 @@
 	</thead>
 	<!-- テーブル本体 -->
 	<!-- テーブル本体 -->
+	<!-- テーブル本体 -->
 		<tbody>
 			<!-- allReservations をループして 1 行ずつ出力 -->
 			<tr th:each="reservation : ${allReservations}">
@@ -76,20 +77,28 @@
 				
 				<!-- 操作列：条件分岐でボタンを出し分け -->
 				<td>
-					<!-- 1. 編集ボタン（共通） -->
-					<a th:href="@{/reservation/{id}/edit(id=${reservation.id})}" class="button secondary">編集</a>
+					<!-- ステータスが「予約済」の場合のみ操作を表示（二重キャンセル防止） -->
+					<th:block th:if="${reservation.status == '予約済'}">
+						<!-- 1. 編集ボタン（絶対パスに修正） -->
+						<a th:href="@{/reservation/{id}/edit(id=${reservation.id})}" class="button secondary">編集</a>
 
-					<!-- 2. 【未来・当日】キャンセルボタンを表示 -->
-					<form th:if="${!reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
-						  th:action="@{admin/reservation/{id}/cancel(id=${reservation.id})}" method="post" style="display:inline;">
-						<button type="submit" class="button danger" onclick="return confirm('予約を取り消しますか？');">キャンセル</button>
-					</form>
+						<!-- 2. 【未来・当日】キャンセルボタン（/admin を含めた絶対パスに修正） -->
+						<form th:if="${!reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
+							  th:action="@{/admin/reservations/{id}/cancel(id=${reservation.id})}" method="post" style="display:inline;">
+							<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+							<button type="submit" class="button danger" onclick="return confirm('予約を取り消しますか？');">キャンセル</button>
+						</form>
 
-					<!-- 3. 【昨日以前（過去）】削除ボタンを表示 -->
-					<form th:if="${reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
-						  th:action="@{/admin/reservations/{id}/delete(id=${reservation.id})}" method="post" style="display:inline;">
-						<button type="submit" class="button secondary" onclick="return confirm('過去の記録を完全に削除しますか？');">削除</button>
-					</form>
+						<!-- 3. 【昨日以前（過去）】論理削除ボタン -->
+						<form th:if="${reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}"
+							  th:action="@{/admin/reservations/{id}/delete(id=${reservation.id})}" method="post" style="display:inline;">
+							<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+							<button type="submit" class="button secondary" onclick="return confirm('過去の記録を非表示にしますか？');">削除</button>
+						</form>
+					</th:block>
+
+					<!-- キャンセル済みの場合はバッジを表示 -->
+					<span th:if="${reservation.status == 'キャンセル済'}" class="badge danger-text">キャンセル済</span>
 				</td>
 			</tr>
 			
@@ -103,7 +112,7 @@
 	<!-- 下部ボタン群 -->
 	<div class="button-group" style="margin-top: 20px;">
 		<!-- 管理者は /admin/dashboard へ戻るのが一般的 -->
-		<a th:href="@{/admin/dashboard}" class="button secondary">管理画面に戻る</a>
+		<a th:href="@{/dashboard}" class="button secondary">管理画面に戻る</a>
 	</div>
 	</div>
 	</body>

@@ -33,37 +33,34 @@
     <span th:text="${errorMessage}">ここにエラーメッセージが出ます</span>
 </div>
 <!-- 送信先は /staff/shifts。CSRF hidden を入れるのが実運用では必須 -->
-<form th:action="@{/staff/shifts/create-update}" method="post">
- 
-	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-<!-- 日付入力 -->
-<p>
-	<!-- スタッフID（ログイン中のIDを渡す） -->
-	<input type="hidden" name="staffId" th:value="${staffId}">
+<form th:action="@{/staff/shifts/save}" method="post">
+    <!-- 1. hidden は form の直下に置く -->
+    <input type="hidden" name="staffId" th:value="${staffId}">
 
-	<!-- 日付入力欄（これがないと Java 側で必須項目エラーになります） -->
-	<p>
-	    <label for="date">日付:</label>
-	    <input type="date" id="date" name="date" required>
-	</p>
-	<!-- ラベル -->
-	<label for="startTime">開始時間:</label>
-	<!-- type=time の入力欄 -->
-	<input type="time" id="startTime" name="startTime" step="60" required>
-	</p>
-	<!-- 終了時刻入力 -->
-	<p>
-	<!-- ラベル -->
-	<label for="endTime">終了時間:</label>
-	<!-- type=time の入力欄 -->
-	<input type="time" id="endTime" name="endTime" step="60" required>
-	</p>
-	<!-- 送信ボタン -->
-	<div class="button-group">
-	<!-- シフト登録/更新実行 -->
-	<button type="submit">シフト登録/更新</button>
-	</div>
-	</form>
+    <!-- 2. 日付：form-group で囲む -->
+    <div class="form-group">
+        <label for="date">日付:</label>
+        <input type="date" id="date" name="date" required>
+    </div>
+
+    <!-- 3. 開始時間 -->
+    <div class="form-group">
+        <label for="startTime">開始時間:</label>
+        <input type="time" id="startTime" name="startTime" 
+               th:value="${shift != null ? shift.startTime : ''}" required>
+    </div>
+
+    <!-- 4. 終了時間 -->
+    <div class="form-group">
+        <label for="endTime">終了時間:</label>
+        <input type="time" id="endTime" name="endTime" 
+               th:value="${shift != null ? shift.endTime : ''}" required>
+    </div>
+
+    <div class="button-group">
+        <button type="submit" class="button">シフト登録/更新</button>
+    </div>
+</form>
 	<!-- 自分のシフト一覧 -->
 	<h2>あなたのシフト一覧</h2>
 	<!-- シフト一覧テーブル -->

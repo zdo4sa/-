@@ -156,7 +156,7 @@ public class StaffController {
 	}
 
 	// スタッフ自身のシフト登録・更新（POST）
-	@PostMapping("/shifts/create-update")
+	@PostMapping("/shifts/save")
 	public String createOrUpdateStaffShift(
 			@RequestParam("staffId") Long staffId,
 			@RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -186,6 +186,11 @@ public class StaffController {
 	public String deleteStaffShift(@PathVariable("id") Long shiftId) {
 		shiftService.deleteShift(shiftId);
 		return "redirect:/staff/shifts?success=shiftDeleted";
+	}
+
+	@GetMapping("/dashboard")
+	public String staffDashboard() {
+		return "staff_dashboard"; // templates/staff_dashboard.html を呼び出す
 	}
 
 }

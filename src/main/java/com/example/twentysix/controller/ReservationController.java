@@ -8,12 +8,11 @@ import java.util.List;
 
 //リクエストパラメータの日付/時間文字列を Java 時間型に変換するためのアノテーション
 import org.springframework.format.annotation.DateTimeFormat;
-//認証済みユーザの principal をメソッド引数に受け取る
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-//Spring Security の標準ユーザ表現
 import org.springframework.security.core.userdetails.UserDetails;
 //MVC コントローラ宣言
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 //テンプレートに値を受け渡すためのモデル
 import org.springframework.ui.Model;
 //ルーティング系アノテーション（GET/POST/パス変数など）
@@ -23,14 +22,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.example.twentysix.entity.Coupon;
 //予約エンティティ：フォームバインドや再表示で利用
 import com.example.twentysix.entity.Reservation;
 import com.example.twentysix.entity.SurveyResponse;
 //ユーザエンティティ：顧客・スタッフの紐付けに使用
 import com.example.twentysix.entity.User;
+import com.example.twentysix.repository.CouponRepository;
 //ユーザ検索のためのリポジトリ（メール→User、ID→User）
 import com.example.twentysix.repository.UserRepository;
+import com.example.twentysix.service.CouponService;
 //予約に関する業務ロジック（重複予約チェック、作成・更新・キャンセル等）
 import com.example.twentysix.service.ReservationService;
 import com.example.twentysix.service.SurveyService;
@@ -43,87 +46,136 @@ public class ReservationController {
 	private final ReservationService reservationService;
 	private final UserRepository userRepository;
 	private final SurveyService surveyService;
+	private final CouponRepository couponRepository; // ★これを追加
+	private final CouponService couponService;
 
 	// 1. コンストラクタの引数に SurveyService surveyService を追加する
 	public ReservationController(ReservationService reservationService,
 			UserRepository userRepository,
-			SurveyService surveyService) {
+			SurveyService surveyService, CouponRepository couponRepository, CouponService couponService) {
 
 		this.reservationService = reservationService;
 		this.userRepository = userRepository;
 
 		// 2. 引数で受け取った surveyService をフィールドに代入する
 		this.surveyService = surveyService;
+		this.couponRepository = couponRepository;
+		this.couponService = couponService;
+	}
+
+	// クーポンリポジトリをコンストラクタで注入しておいてください
+	@PostMapping("/{id}/apply-coupon")
+	@Transactional
+	public String applyCoupon(@PathVariable("id") Long reservationId,
+			@RequestParam("couponId") Long couponId,
+			@AuthenticationPrincipal UserDetails userDetails) {
+
+		// 1. 予約とクーポンを取得
+		Reservation res = reservationService.getReservationById(reservationId)
+				.orElseThrow(() -> new IllegalArgumentException("Invalid reservation Id"));
+		Coupon coupon = couponRepository.findById(couponId)
+				.orElseThrow(() -> new IllegalArgumentException("Invalid coupon Id"));
+
+		// 2. セキュリティチェック（他人のクーポン利用防止）
+		if (!coupon.getUser().getEmail().equals(userDetails.getUsername())) {
+			return "redirect:/reservation/history?error=auth";
+		}
+
+		// 3. すでにクーポン適用済みでないかチェック
+		if (res.getAppliedDiscount() > 0) {
+			return "redirect:/reservation/history?error=already_applied";
+		}
+
+		// 4. 適用：クーポンを使用済みにし、予約に金額を反映
+		res.setAppliedDiscount(coupon.getDiscountAmount());
+		coupon.setUsed(true);
+
+		// 5. 保存（@Transactionalにより自動でDBに反映されます）
+		return "redirect:/reservation/history?success=couponApplied";
 	}
 
 	// 予約登録フォームの表示（空フォーム + スタッフ一覧）
 	@GetMapping("/new")
-	public String showReservationForm(Model model) {
-		// スタッフ一覧をプルダウン用に投入
+	public String showReservationForm(@AuthenticationPrincipal UserDetails userDetails, Model model) {
+		// 1. ログイン中のユーザーを特定
+		User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+
+		// 2. 未使用で有効なクーポンを取得してモデルに渡す（変数名は availableCoupons）
+		model.addAttribute("availableCoupons", couponService.getAvailableCoupons(user));
+
+		// 既存の処理
 		model.addAttribute("staffs", reservationService.getAllStaffs());
-		// 新規作成用の空の Reservation をバインド（th:object 相当）
-		model.addAttribute("reservation", new Reservation()); // For form binding
-		// 予約フォームテンプレートへ
+		model.addAttribute("reservation", new Reservation());
 		return "reservation_form";
 
 	}
 
+	// 予約履歴画面を表示
+	@GetMapping("/history")
+	public String showReservationHistory(@AuthenticationPrincipal UserDetails userDetails, Model model) {
+		User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+
+		// 2. 履歴（削除済以外）を取得
+		List<Reservation> history = reservationService.getUserReservations(user);
+		model.addAttribute("userReservations", history);
+
+		// ★追加：未使用で有効なクーポンリストを取得してモデルに渡す
+		// CouponService を使って取得します
+		model.addAttribute("availableCoupons", couponService.getAvailableCoupons(user));
+
+		return "reservation_history";
+	}
+
 	// 予約作成の受付（POST）：顧客認証前提
-	@PostMapping("/new")
-	public String createReservation(
-			// ログイン中ユーザ（UserDetails）を注入（メールが username）
+	// 予約作成の受付（POST）：顧客認証前提
+	@PostMapping("/new") // ★これが必要！
+	@Transactional // ★クーポン消費と予約を同時に行うため推奨
+	public String createReservation( // ★ここから引数が始まります
 			@AuthenticationPrincipal UserDetails userDetails,
-			// スタッフ選択（ID 指定）
 			@RequestParam("staffId") Long staffId,
-			// 日付（yyyy-MM-dd 形式を LocalDate へ変換）
 			@RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-			// 時刻（HH:mm 形式を LocalTime へ変換）
 			@RequestParam("timeSlot") @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime timeSlot,
-			// メニュー名（自由入力）
 			@RequestParam("menu") String menu,
-			// 画面再表示時のエラーメッセージや再入力値セットに使用
-			Model model) {
-		// ログイン中の顧客をメールから取得。見つからない場合は例外
+			@RequestParam(value = "couponId", required = false) Long couponId,
+			Model model) { // ★中身はここから
+
 		User customer = userRepository.findByEmail(userDetails.getUsername())
 				.orElseThrow(() -> new RuntimeException("Customer not found"));
+
 		try {
-			// ビジネスルールに従って予約作成（重複・シフト内判定を内部で実施）
-			reservationService.createReservation(customer, staffId, date, timeSlot, menu);
-			// 正常完了：履歴画面へ success クエリを付けてリダイレクト
+			int discount = 0;
+			// 1. クーポンが選択されている場合の消費処理
+			if (couponId != null) {
+				Coupon coupon = couponRepository.findById(couponId)
+						.orElseThrow(() -> new IllegalArgumentException("Invalid coupon ID"));
+
+				discount = coupon.getDiscountAmount();
+				coupon.setUsed(true);
+				couponRepository.save(coupon);
+			}
+
+			// 2. 予約作成（引数に discount を渡す）
+			reservationService.createReservation(customer, staffId, date, timeSlot, menu, discount);
+
 			return "redirect:/reservation/history?success=created";
+
 		} catch (IllegalStateException e) {
-			// 競合やバリデーションエラーなどビジネス例外を画面に返す
 			model.addAttribute("errorMessage", e.getMessage());
-			// スタッフ一覧を再投入（フォーム再表示で必要）
 			model.addAttribute("staffs", reservationService.getAllStaffs());
-			// 入力値を保持するための一時 Reservation を作成し、フォームに再表示
+			model.addAttribute("availableCoupons", couponService.getAvailableCoupons(customer));
+
 			Reservation tempReservation = new Reservation();
-			// スタッフ ID からエンティティへ（存在しない場合は null 設定）
 			tempReservation.setStaff(userRepository.findById(staffId).orElse(null));
-			// 入力日付を保持
 			tempReservation.setRecordDate(date);
-			// 入力時刻を保持
 			tempReservation.setTimeSlot(timeSlot);
-			// 入力メニューを保持
 			tempReservation.setMenu(menu);
-			// モデルへ再投入（テンプレートは reservation_form を再利用）
 			model.addAttribute("reservation", tempReservation);
-			// エラー時も同じフォームを表示して再入力を促す
+
 			return "reservation_form";
 		}
 	}
 
 	// 自分の予約履歴を一覧表示（ログインユーザに紐付く）
-	@GetMapping("/history")
-	public String showReservationHistory(@AuthenticationPrincipal UserDetails userDetails, Model model) {
-		// ログイン中顧客を取得
-		User customer = userRepository.findByEmail(userDetails.getUsername())
-				.orElseThrow(() -> new RuntimeException("Customer not found"));
-		// 顧客の予約一覧（新しい順）をモデルへ
-		model.addAttribute("userReservations", reservationService.getUserReservations(customer));
-		// 履歴画面テンプレートへ
-		return "reservation_history";
-	}
 
 	// 予約編集フォームの表示（予約 ID 指定）
 	@GetMapping("/{id}/edit")
@@ -207,20 +259,28 @@ public class ReservationController {
 	// アンケート回答受付
 	@PostMapping("/{id}/survey")
 	public String submitSurvey(@PathVariable("id") Long reservationId,
+			@AuthenticationPrincipal UserDetails userDetails,
 			@RequestParam("staffRating") Integer staffRating,
 			@RequestParam("serviceRating") Integer serviceRating,
-			@RequestParam("comment") String comment,
+			@RequestParam("comment") String comment, RedirectAttributes redirectAttributes,
 			Model model) {
 		try {
-			surveyService.saveSurveyResponse(reservationId, staffRating, serviceRating, comment);
+			boolean isWin = surveyService.saveSurveyResponse(
+					userDetails.getUsername(), reservationId, staffRating, serviceRating, comment);
+
+			// 今回のサイコロの結果（isWin）だけで判定する
+			if (isWin) {
+				redirectAttributes.addFlashAttribute("winMessage", "🎉 おめでとうございます！クーポンが当たりました！");
+			} else {
+				redirectAttributes.addFlashAttribute("loseMessage", "アンケートへのご協力ありがとうございました！");
+			}
+
 			return "redirect:/reservation/history?success=surveySubmitted";
 		} catch (IllegalStateException | IllegalArgumentException e) {
 			model.addAttribute("errorMessage", e.getMessage());
-			// エラー時もフォームを再表示できるようにモデル属性を再投入
 			model.addAttribute("reservation", reservationService.getReservationById(reservationId).get());
 			model.addAttribute("surveyResponse", new SurveyResponse());
 			return "survey_form";
 		}
 	}
-
 }

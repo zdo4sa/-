@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>マイクーポン - 予約管理システム</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<div class="container">
+    <h1>🎟️ マイクーポン</h1>
+
+    <!-- 300円クーポンセクション -->
+    <h2 style="color: #d4af37;">✨ 【超豪華】300円クーポン ✨</h2>
+    <div th:if="${#lists.isEmpty(coupons300)}" style="text-align: center; color: #999;">
+        対象のクーポンはありません。
+    </div>
+    
+    <!-- カード形式の表示エリア -->
+    <div class="coupon-container">
+        <div th:each="c : ${coupons300}" class="coupon-card">
+            <h3 th:text="${c.name}">300円クーポン</h3>
+            <span class="coupon-amount">300<small>円</small></span>
+            <p>有効期限: <span th:text="${c.expiryDate}"></span></p>
+            <div style="font-size: 0.8em; color: #999;">※予約時にご利用いただけます</div>
+        </div>
+    </div>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px dashed #ddd;">
+
+    <!-- 50円クーポンセクション -->
+    <h2>50円クーポン</h2>
+    <div th:if="${#lists.isEmpty(coupons50)}" style="text-align: center; color: #999;">
+        対象のクーポンはありません。
+    </div>
+    
+    <div class="coupon-container">
+        <div th:each="c : ${coupons50}" class="coupon-card" style="border-color: #ddd;">
+            <h3 th:text="${c.name}">50円クーポン</h3>
+            <span class="coupon-amount" style="color: #666;">50<small>円</small></span>
+            <p>有効期限: <span th:text="${c.expiryDate}"></span></p>
+        </div>
+    </div>
+
+    <div class="main-nav" style="margin-top: 40px;">
+        <a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+    </div>
+</div>
+</body>
+</html>

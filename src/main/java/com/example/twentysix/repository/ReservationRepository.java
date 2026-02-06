@@ -36,4 +36,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
 	// スタッフを縛って、特定日範囲の予約を抽出（本日の予約など）
 	List<Reservation> findByStaffAndRecordDateBetween(User staff, LocalDate startDate, LocalDate endDate);
+
+	// 指定したステータス「以外」をすべて取得する
+	List<Reservation> findByStatusNot(String status);
+
+	// 期間指定かつ、指定したステータス「以外」を取得する
+	List<Reservation> findByRecordDateBetweenAndStatusNot(LocalDate start, LocalDate end, String status);
+
+	List<Reservation> findByUserAndStatusNotOrderByRecordDateDescTimeSlotDesc(User user, String status);
+
+	List<Reservation> findByStaffAndRecordDateAndStatusNot(User staff, LocalDate date, String status);
 }

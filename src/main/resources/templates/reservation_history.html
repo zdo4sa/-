@@ -1,114 +1,85 @@
-<!-- HTML5 宣言 -->
 <!DOCTYPE html>
-<!-- ルート要素。日本語、Thymeleaf と Spring Security 名前空間を宣言 -->
 <html lang="ja" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<!-- メタ情報・スタイルの読み込み -->
 <head>
-<!-- 文字エンコーディング -->
-<meta charset="UTF-8">
-<!-- ページタイトル -->
-<title>予約履歴 - 予約管理システム</title>
-<!-- 共通スタイルの読み込み -->
-<link rel="stylesheet" th:href="@{/css/style.css}">
+    <meta charset="UTF-8">
+    <title>予約履歴 - 予約管理システム</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-<!-- 本文 -->
 <body>
-<!-- レイアウトコンテナ -->
 <div class="container">
-<!-- 見出し -->
-<h1>予約履歴</h1>
-<!-- ページ説明文 -->
-<p>あなたの予約履歴です。</p>
-<!-- 成功メッセージ（?success=
-... に応じて表示を切替） -->
-<div th:if= "${param.success}" class="success-message">
-<!-- 新規作成成功 -->
-<span th:if= "${param.success == 'created'}">予約が登録されました。</span>
-<!-- 更新成功 -->
-<span th:if= "${param.success == 'updated'}">予約が更新されました。</span>
-<!-- キャンセル成功 -->
-<span th:if= "${param.success == 'cancelled'}">予約がキャンセルされました。</span>
-</div>
-<!-- 予約履歴テーブル -->
-<table>
-<!-- ヘッダ -->
-<thead>
-<tr>
-<!-- スタッフ名 -->
-<th>スタッフ</th>
-<!-- 日付（yyyy-MM-dd で表示） -->
-<th>日付</th>
-<!-- 時間（HH:mm で表示） -->
-<th>時間</th>
-<!-- メニュー名 -->
-<th>メニュー</th>
-<!-- ステータス -->
-<th>ステータス</th>
-<!-- 操作（編集・キャンセル） -->
-<th>操作</th>
-</tr>
-</thead>
-<!-- 本体 -->
-<tbody>
-    <!-- userReservations をループして表示 -->
-    <tr th:each="reservation : ${userReservations}">
-        <!-- スタッフ名（未割り当て時は代替表示） -->
-        <td th:text="${reservation.staff != null ? reservation.staff.name : '未割り当て'}"></td>
-        <!-- 日付を yyyy-MM-dd で整形表示 -->
-        <td th:text="${#temporals.format(reservation.recordDate, 'yyyy-MM-dd')}"></td>
-        <!-- 時間を HH:mm で整形表示 -->
-        <td th:text="${#temporals.format(reservation.timeSlot, 'HH:mm')}"></td>
-        <!-- メニュー名 -->
-        <td th:text="${reservation.menu}"></td>
-        <!-- ステータス -->
-        <td th:text="${reservation.status}"></td>
+    <h1>予約履歴</h1>
 
-        <!-- 行内操作セル（ここをスッキリ整理） -->
-        <td>
-            <!-- 【編集ボタン】未来の予約のみ表示 -->
-            <a th:if="${reservation.recordDate.isAfter(#temporals.createNow().toLocalDate()) || 
-                      (reservation.recordDate.isEqual(#temporals.createNow().toLocalDate()) && reservation.timeSlot.isAfter(#temporals.createNow().toLocalTime()))}"
-               th:href="@{/reservation/{id}/edit(id=${reservation.id})}" class="button secondary">編集</a>
+    <!-- ★ここに配置！ 当たり・ハズレの演出メッセージ -->
+	<div th:if="${winMessage}" class="win-banner">
+	    <span th:text="${winMessage}"></span>
+	</div>
 
-			   <!-- 1. 【回答済み】 すでにアンケートが存在する場合 -->
-			       <span th:if="${reservation.surveyResponse != null}" 
-			             class="badge badge-done">回答済み</span>
+    <div th:if="${loseMessage}" style="background: #f4f4f4; color: #666; padding: 15px; text-align: center; border-radius: 10px; margin-bottom: 20px;">
+        <span th:text="${loseMessage}"></span>
+    </div>
 
-			       <!-- 2. 【未回答】 かつ 【過去】 かつ 【キャンセル済でない】 場合： ボタンを表示 -->
-			       <a th:if="${reservation.surveyResponse == null and 
-			                   reservation.status != 'キャンセル済' and 
-			                   (reservation.recordDate.isBefore(#temporals.createNow().toLocalDate()) or 
-			                   (reservation.recordDate.isEqual(#temporals.createNow().toLocalDate()) and reservation.timeSlot.isBefore(#temporals.createNow().toLocalTime())))}"
-			          th:href="@{/reservation/{id}/survey(id=${reservation.id})}" 
-			          class="button info">アンケート回答</a>
+    <!-- 既存の成功メッセージ（登録・更新・キャンセル時） -->
+    <div th:if="${param.success}" class="success-message">
+        <span th:if="${param.success == 'created'}">予約が登録されました。</span>
+        <span th:if="${param.success == 'updated'}">予約が更新されました。</span>
+        <span th:if="${param.success == 'cancelled'}">予約がキャンセルされました。</span>
+    </div>
 
-			       <!-- 3. 【未回答】 かつ 【未来】 の場合： 「実施待ち」を表示 -->
-			       <span th:if="${reservation.surveyResponse == null and 
-			                   reservation.status != 'キャンセル済' and 
-			                   (reservation.recordDate.isAfter(#temporals.createNow().toLocalDate()) or 
-			                   (reservation.recordDate.isEqual(#temporals.createNow().toLocalDate()) and reservation.timeSlot.isAfter(#temporals.createNow().toLocalTime())))}"
-			             class="badge badge-wait">実施待ち</span>
+	<table>
+	        <thead>
+	            <tr>
+	                <th>スタッフ</th>
+	                <th>日付</th>
+	                <th>時間</th>
+	                <th>メニュー</th>
+	                <th>ステータス</th>
+	                <!-- ★ここに追加！ -->
+	                <th>クーポン適用</th>
+	                <th>操作</th>
+	            </tr>
+	        </thead>
+	        <tbody>
+	            <!-- 予約データをループ表示 -->
+	            <tr th:each="reservation : ${userReservations}">
+	                <td th:text="${reservation.staff != null ? reservation.staff.name : '未割り当て'}"></td>
+	                <td th:text="${#temporals.format(reservation.recordDate, 'yyyy-dd')}"></td> <!-- ※必要なら MM-dd に -->
+	                <td th:text="${#temporals.format(reservation.timeSlot, 'HH:mm')}"></td>
+	                <td th:text="${reservation.menu}"></td>
+	                <td th:text="${reservation.status}"></td>
+	                
+	                <!-- クーポン表示列 -->
+					<td>
+					    <!-- CSSクラス badge-coupon を使うので、中の style は削除してスッキリさせます -->
+					    <div th:if="${reservation.appliedDiscount > 0}" class="badge-coupon">
+					        🎟️ <span th:text="${reservation.appliedDiscount}"></span>円引き適用済
+					        <br>
+					        <small style="opacity: 0.8;">（アンケート特典）</small>
+					    </div>
+					    <span th:if="${reservation.appliedDiscount == 0}" style="color: #ccc;">-</span>
+					</td>
 
-            <!-- 【キャンセルボタン】未来の予約のみ表示（POST形式） -->
-            <form th:if="${reservation.recordDate.isAfter(#temporals.createNow().toLocalDate()) || 
-                          (reservation.recordDate.isEqual(#temporals.createNow().toLocalDate()) && reservation.timeSlot.isAfter(#temporals.createNow().toLocalTime()))}"
-                  th:action="@{/reservation/{id}/cancel(id=${reservation.id})}" method="post" style="display:inline;">
-                <!-- CSRFトークン（th:action使用時は自動挿入されますが明示も可） -->
-                <button type="submit" class="button danger" onclick="return confirm('本当にキャンセルしますか？');">キャンセル</button>
-            </form>
-        </td>
-    </tr>
-    <!-- データがない場合の代替行 -->
-    <tr th:if="${#lists.isEmpty(userReservations)}">
-        <td colspan="6">予約がありません。</td>
-    </tr>
-</tbody>
-</table>
-<!-- 下部ナビ（ダッシュボードへ戻る） -->
-<div class="button-group">
-<!-- 戻るリンク -->
-<a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
-</div>
+	                <td>
+	                    <!-- 回答済みバッジ -->
+	                    <span th:if="${reservation.surveyResponse != null}" class="badge-done">✅ 回答済み</span>
+
+	                    <!-- アンケートボタン -->
+	                    <a th:if="${reservation.surveyResponse == null && 
+	                               reservation.recordDate.isBefore(#temporals.createNow().toLocalDate()) && 
+	                               reservation.status == '予約済'}" 
+	                       th:href="@{/reservation/{id}/survey(id=${reservation.id})}" 
+	                       class="button small">回答してクーポンGET!</a>
+	                </td>
+	            </tr>
+	            <!-- 履歴が空の場合 -->
+	            <tr th:if="${#lists.isEmpty(userReservations)}">
+	                <!-- ★列が合計7列になったので colspan="7" に修正 -->
+	                <td colspan="7">予約履歴はありません。</td>
+	            </tr>
+	        </tbody>
+	    </table>
+    
+    <div style="margin-top: 20px;">
+        <a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+    </div>
 </div>
 </body>
-</html>

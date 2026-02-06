@@ -54,8 +54,8 @@ public class ReservationService {
 
 	//指定ユーザの予約履歴（新しい順）を取得
 	public List<Reservation> getUserReservations(User user) {
-		//ユーザ紐づきの予約を日付降順→時間降順で返す
-		return reservationRepository.findByUserOrderByRecordDateDescTimeSlotDesc(user);
+		// 顧客の履歴からも「削除済」を除外して、新しい順に表示する
+		return reservationRepository.findByUserAndStatusNotOrderByRecordDateDescTimeSlotDesc(user, "削除済");
 	}
 
 	//予約を ID で 1 件取得（存在しなければ Optional.empty）
@@ -66,14 +66,15 @@ public class ReservationService {
 
 	//全予約の一覧を取得（管理者用）
 	public List<Reservation> getAllReservations() {
-		//reservation テーブルの全件を返す
-		return reservationRepository.findAll();
+		// すべて取得する代わりに「削除済」以外を取得するように変更
+		return reservationRepository.findByStatusNot("削除済");
 	}
 
 	//期間指定で予約を抽出（統計・フィルタ表示用）
-	public List<Reservation> getReservationsByDateRange(LocalDate startDate, LocalDate endDate) {
-		//startDate <= record_date <= endDate の範囲で抽出
-		return reservationRepository.findByRecordDateBetween(startDate, endDate);
+	// 期間指定での予約取得（削除済を除外）
+	public List<Reservation> getReservationsByDateRange(LocalDate start, LocalDate end) {
+		// 期間内かつ「削除済」以外を取得するように変更
+		return reservationRepository.findByRecordDateBetweenAndStatusNot(start, end, "削除済");
 	}
 
 	//予約更新（別スロットへの変更時も競合/シフト内を厳密チェック）
@@ -126,32 +127,37 @@ public class ReservationService {
 	//スタッフ一覧（ロール=STAFF のみ）を取得
 	public List<User> getAllStaffs() {
 		//ユーザテーブルから "STAFF" ロールのユーザを返す
-		return userRepository.findByRole("STAFF");
+		return userRepository.findByRole("ROLE_STAFF");
 	}
 
 	//指定スタッフ・日付の空き時間枠一覧を計算して返す（30 分刻み）
 	public List<LocalTime> getAvailableTimeSlots(Long staffId, LocalDate date) {
-		//スタッフ ID から User を取得（存在しなければ 400 相当）
 		User staff = userRepository.findById(staffId)
 				.orElseThrow(() -> new IllegalArgumentException("Staff not found"));
-		//指定日のスタッフシフトを取得（なければ空リスト＝空きなし）
-		Optional<com.example.twentysix.entity.Shift> staffShift = shiftRepository.findByStaffAndRecordDate(staff, date);
-		//シフト未設定なら空き枠なし
-		if (staffShift.isEmpty()) {
-			//空のイミュータブルリストを返す
-			return List.of(); // No shift, no available slots
+
+		// 1. 「キャンセル済」を除外した予約リストを取得
+		List<Reservation> activeReservations = reservationRepository.findByStaffAndRecordDateAndStatusNot(
+				staff, date, "キャンセル済");
+
+		// 2. シフトを取得（Optional のまま受け取る）
+		Optional staffShiftOpt = shiftRepository.findByStaffAndRecordDate(staff, date);
+
+		if (staffShiftOpt.isEmpty()) {
+			return List.of();
 		}
-		//シフト開始時刻を取得
-		LocalTime shiftStart = staffShift.get().getStartTime();
-		//シフト終了時刻を取得
-		LocalTime shiftEnd = staffShift.get().getEndTime();
-		//シフト時間内を 30 分刻みでスロット化（終了時刻は含めない）
-		List<LocalTime> allPossibleSlots = generateTimeSlots(shiftStart, shiftEnd, 30); // 30 minute intervals
-		//当日のスタッフ予約を取得（開始=終了=date でその日のみ抽出）
-		List<Reservation> bookedSlots = reservationRepository.findByStaffAndRecordDateBetween(staff, date, date);
-		//既予約スロットを除外して空きのみを返す
+
+		// 3. 箱から取り出し、Shift型として扱う（これで赤線が消えます）
+		com.example.twentysix.entity.Shift shift = (com.example.twentysix.entity.Shift) staffShiftOpt.get();
+
+		LocalTime shiftStart = shift.getStartTime();
+		LocalTime shiftEnd = shift.getEndTime();
+
+		// 4. 30分刻みの全スロット作成
+		List<LocalTime> allPossibleSlots = generateTimeSlots(shiftStart, shiftEnd, 30);
+
+		// 5. 有効な予約（activeReservations）と重ならない枠だけを返す
 		return allPossibleSlots.stream()
-				.filter(slot -> bookedSlots.stream().noneMatch(res -> res.getTimeSlot().equals(slot)))
+				.filter(slot -> activeReservations.stream().noneMatch(res -> res.getTimeSlot().equals(slot)))
 				.collect(Collectors.toList());
 	}
 
@@ -185,56 +191,57 @@ public class ReservationService {
 
 	// 期間内の予約をメニュー名で集計し、件数マップを返す
 	public Map<String, Long> getReservationCountByMenu(LocalDate startDate, LocalDate endDate) {
-		// 期間内の予約を取得
 		List<Reservation> reservations = reservationRepository.findByRecordDateBetween(startDate, endDate);
-		// menu をキーに件数をカウント（null メニューは null キーとして集計されうる点に注意）
 		return reservations.stream()
+				// ★追加：キャンセル済を除外
+				.filter(r -> !"キャンセル済".equals(r.getStatus()))
 				.collect(Collectors.groupingBy(Reservation::getMenu, Collectors.counting()));
 	}
 
 	// 期間内の予約をスタッフ名で集計（null スタッフを除外）
 	public Map<String, Long> getReservationCountByStaff(LocalDate startDate, LocalDate endDate) {
-		// 期間内の予約を取得
 		List<Reservation> reservations = reservationRepository.findByRecordDateBetween(startDate, endDate);
-		// staff != null のデータのみ集計し、スタッフ表示名をキーに件数をカウント
 		return reservations.stream()
 				.filter(r -> r.getStaff() != null)
+				// ★追加：キャンセル済を除外
+				.filter(r -> !"キャンセル済".equals(r.getStatus()))
 				.collect(Collectors.groupingBy(r -> r.getStaff().getName(), Collectors.counting()));
 	}
 
+	// ReservationService.java
 	@Transactional
-	public Reservation createReservation(User customer, Long staffId, LocalDate date, LocalTime timeSlot, String menu) {
-
-		// 1. staffId (Long) からスタッフ(User)を取得
+	public void createReservation(User user, Long staffId, LocalDate date, LocalTime time, String menu, int discount) { // ★最後に int discount を追加
+		// 1. スタッフを取得
 		User staff = userRepository.findById(staffId)
 				.orElseThrow(() -> new IllegalArgumentException("Staff not found"));
 
-		// 2. 新しい予約エンティティを作成
+		// 2. 予約エンティティを作成
 		Reservation reservation = new Reservation();
-		reservation.setUser(customer);
+		reservation.setUser(user);
 		reservation.setStaff(staff);
-
-		// ★重要：変数名は recordDate を使用
 		reservation.setRecordDate(date);
-		reservation.setTimeSlot(timeSlot);
+		reservation.setTimeSlot(time);
 		reservation.setMenu(menu);
 		reservation.setStatus("予約済");
 
-		// 3. 保存して返す
-		return reservationRepository.save(reservation);
+		// 3. ★重要：割引額をセットする
+		reservation.setAppliedDiscount(discount);
+
+		// 4. 保存
+		reservationRepository.save(reservation);
 	}
 
 	@Transactional // ← これが非常に重要です
 	public void deleteReservation(Long id) {
-		// IDが存在するか確認
-		if (!reservationRepository.existsById(id)) {
-			throw new IllegalArgumentException("予約が見つかりません: " + id);
-		}
+		// 1. 予約データを取得
 		Reservation reservation = reservationRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("予約が見つかりません: " + id));
 
-		// アンケートが紐付いている場合、JPAが自動でアンケート→予約の順で消してくれるようになります
-		reservationRepository.delete(reservation);
-	}
+		// 2. 【物理削除はやめる】 DBから消さずに、ステータスを「削除済」に更新する
+		reservation.setStatus("削除済");
 
+		// 3. 保存（これで一覧には「削除済」として残るが、DBからは消えない）
+		reservationRepository.save(reservation);
+
+	}
 }

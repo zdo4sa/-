@@ -122,7 +122,7 @@ public class AdminController {
 		//シフト一覧をモデルに登録
 		model.addAttribute("allShifts", shifts);
 		//スタッフ選択用のプルダウン表示に利用：STAFF ロールのユーザ一覧
-		model.addAttribute("staffs", userRepository.findByRole("STAFF"));
+		model.addAttribute("staffs", userRepository.findByRole("ROLE_STAFF"));
 		//レンダリングするテンプレート名（admin_shifts.html）
 
 		return "admin_shifts";

@@ -17,26 +17,30 @@
     
     <div th:if="${errorMessage}" class="error-message" th:text="${errorMessage}"></div>
 
-    <form th:action="@{/reservation/{id}/survey(id=${reservation.id})}" method="post">
-        <!-- 1. スタッフの対応評価 -->
-        <div class="rating-group">
-            <p><strong>1. スタッフ（[[${reservation.staff.name}]]）の対応はいかがでしたか？</strong></p>
-            <span th:each="i : ${#numbers.sequence(5, 1)}">
-                <input type="radio" th:id="'staff' + ${i}" name="staffRating" th:value="${i}" required>
-                <label th:for="'staff' + ${i}" th:text="${i} + ' : ' + 
-                    (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></label>
-            </span>
-        </div>
+	<form th:action="@{/reservation/{id}/survey(id=${reservation.id})}" method="post">
+	        <!-- 1. スタッフの対応評価 -->
+	        <div class="rating-group">
+	            <p><strong>1. スタッフ（[[${reservation.staff.name}]]）の対応はいかがでしたか？</strong></p>
+	            <!-- ↓ここを class="survey-options" で囲む！ -->
+	            <div class="survey-options">
+	                <label th:each="i : ${#numbers.sequence(5, 1)}">
+	                    <input type="radio" name="staffRating" th:value="${i}" required>
+	                    <span th:text="${i} + ' : ' + (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></span>
+	                </label>
+	            </div>
+	        </div>
 
-        <!-- 2. 設備やサービスの満足度 -->
-        <div class="rating-group">
-            <p><strong>2. 設備やサービスの満足度はいかがでしたか？</strong></p>
-            <span th:each="i : ${#numbers.sequence(5, 1)}">
-                <input type="radio" th:id="'service' + ${i}" name="serviceRating" th:value="${i}" required>
-                <label th:for="'service' + ${i}" th:text="${i} + ' : ' + 
-                    (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></label>
-            </span>
-        </div>
+	        <!-- 2. 設備やサービスの満足度 -->
+	        <div class="rating-group">
+	            <p><strong>2. 設備やサービスの満足度はいかがでしたか？</strong></p>
+	            <!-- ↓ここも同じく囲む！ -->
+	            <div class="survey-options">
+	                <label th:each="i : ${#numbers.sequence(5, 1)}">
+	                    <input type="radio" name="serviceRating" th:value="${i}" required>
+	                    <span th:text="${i} + ' : ' + (${i==5} ? '大変満足' : (${i==1} ? '不満' : ''))"></span>
+	                </label>
+	            </div>
+	        </div>
 
         <!-- 3. 自由記述 -->
         <div class="rating-group">

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import com.example.twentysix.entity.SurveyResponse;
+import com.example.twentysix.entity.User;
 
 @Repository
 public interface SurveyResponseRepository extends JpaRepository<SurveyResponse, Long> {
@@ -14,4 +15,6 @@ public interface SurveyResponseRepository extends JpaRepository<SurveyResponse, 
 	Optional<SurveyResponse> findByReservationId(Long reservationId);
 
 	List<SurveyResponse> findAllByOrderByIdDesc();
+
+	long countByUser(User user);
 }

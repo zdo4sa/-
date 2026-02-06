@@ -11,12 +11,20 @@
 <!-- 共通スタイルシート -->
 <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
-<!-- 本文 -->
 <body>
+<!-- 本文 -->
 <!-- レイアウト用コンテナ -->
 <div class="container">
 <!-- アプリ名の見出し -->
 <h1>予約管理システム</h1>
+	<div th:if="${param.register_success}" class="success-message">
+	    会員登録が完了しました。ログインしてください。
+	</div>
+
+	<!-- エラー時のメッセージ（既存のコードのすぐ上あたり） -->
+	<div th:if="${param.error}" class="error-message">
+	    メールアドレスまたはパスワードが不正です。
+	</div>
 <!-- セクション見出し -->
 <h2>ログイン</h2>
 <!-- ログインフォーム（SecurityConfig.formLogin と連動） -->
@@ -35,6 +43,7 @@
 <p>
 <!-- ラベル -->
 <label for="username">メールアドレス:</label>
+
 <!-- 入力欄（username という name は Spring Security のデフォルトに一致） -->
 <input type="text" id="username" name="username" required>
 </p>
@@ -43,18 +52,18 @@
 <!-- ラベル -->
 <label for="password">パスワード:</label>
 <!-- 入力欄（password という name もデフォルトに一致） -->
-<input type="password" id="password" name="password" required>
+<input type="password" name="password" autocomplete="current-password" required>
 </p>
 <!-- 送信ボタン -->
 <div class="button-group">
 	<button type="submit">ログイン</button>
-	<!-- 注意：CSRF 有効時は hidden 自動挿入（thymeleaf-spring5 連携時）は無いので、
-	実運用では以下を入れる：
-	<input type="hidden" th:name=
-	"${_csrf.parameterName}" th:value=
-	"${_
-	csrf.token}">
-	-->
+	<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+	
+	</div>
+	<!-- 2. 新規登録画面への導線 -->
+	<div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; text-align: center;">
+	    <p>アカウントをお持ちでないですか？</p>
+	    <a th:href="@{/register}" class="button secondary">新規会員登録はこちら</a>
 	</div>
 	</form>
 	</div>

@@ -62,24 +62,27 @@
 <td th:text= "${reservation.status}"></td>
 <!-- 行内操作 -->
 <td>
-<!-- 編集ページへのリンク -->
-<a th:href="@{/staff/reservations/{id}/edit(id=${reservation.id})}" class="button secondary"> 編集</a>
-<!-- キャンセル実行フォーム（POST） -->
-<form th:action="@{/staff/reservations/{id}/cancel(id=${reservation.id})}" method="post" style="display:inline;">
-<!-- 実運用では CSRF hidden を追加：
-<input type="hidden" th:name=
-"${_csrf.parameterName}" th:value=
-"${_
-csrf.token}">
--->
-<!-- キャンセルボタン（確認ダイアログ付き） -->
-<button type="submit" class="button danger" onclick="return confirm('本当にキャンセルしますか？');">キャンセル</button>
-</form>
-</td>
-</tr>
+    <!-- 1. 編集ボタン -->
+    <a th:href="@{/staff/reservations/{id}/edit(id=${reservation.id})}" class="button secondary">編集</a>
+
+    <!-- 2. キャンセルボタン：ステータスが「予約済」の時だけ表示 -->
+	<form th:if="${reservation.status == '予約済' && !reservation.recordDate.isBefore(#temporals.createNow().toLocalDate())}" 
+	      th:action="@{/staff/reservations/{id}/cancel(id=${reservation.id})}" 
+	      method="post" 
+	      onsubmit="return confirm('本当にキャンセルしますか？');" 
+	      style="display:inline;">
+	    <button type="submit" class="button danger small">キャンセル</button>
+	</form>
+
+	<!-- 過去の予約には「終了」などのラベルを出すと親切です -->
+	<span th:if="${reservation.recordDate.isBefore(#temporals.createNow().toLocalDate()) && reservation.status == '予約済'}" 
+	      class="badge">来店済み</span>
+
+    <!-- 3. キャンセル済の場合の表示 -->
+    <span th:if="${reservation.status == 'キャンセル済'}" class="badge danger-text">キャンセル不可</span>
+</td> 
 <!-- データなし時の代替行 -->
-<tr th:if=
-"${#lists.isEmpty(staffReservations)}">
+<tr th:if="${#lists.isEmpty(staffReservations)}">
 <!-- 6 列分まとめて表示 -->
 <td colspan="6">担当する予約がありません。</td>
 </tr>
@@ -87,8 +90,9 @@ csrf.token}">
 </table>
 <!-- 下部ナビ -->
 <div class="button-group">
-<!-- ダッシュボードへ戻る -->
-<a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+    <!-- クラスのパス設定に合わせて /staff を明示的に指定 -->
+    <a th:href="@{/dashboard}" class="button secondary">ダッシュボードに戻る</a>
+</div>
 </div>
 </div>
 </body>
